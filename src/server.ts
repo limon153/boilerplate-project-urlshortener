@@ -20,11 +20,15 @@ const MONGO_CLUSTER_ADDRESS = process.env.MONGO_CLUSTER_ADDRESS;
 
 const MONGO_DB_URL = `mongodb+srv://${MONGO_DB_LOGIN}:${MONGO_DB_PASSWORD}@${MONGO_CLUSTER_ADDRESS}.mongodb.net/test?retryWrites=true&w=majority`;
 
-const urlSchema = new mongoose.Schema({
+interface UrlSchema {
+  originalUrl: string;
+}
+
+const urlSchema = new mongoose.Schema<UrlSchema>({
   originalUrl: String,
 });
 
-const Urls = mongoose.model('Urls', urlSchema);
+const Urls = mongoose.model<UrlSchema & mongoose.Document>('Urls', urlSchema);
 
 app.use(cors());
 app.set('views', path.join(__dirname, 'views'));
@@ -66,5 +70,19 @@ app.post('/api/shorturl/new', async (req, res) => {
     res.json({ original_url: originalHref, short_url: shortUrl._id });
   } catch {
     res.json({ error: 'invalid URL' });
+  }
+});
+
+app.get('/api/shorturl/:id', async (req, res) => {
+  const id = req.params.id;
+
+  try {
+    const urlDocument = await Urls.findById(id);
+
+    if (!urlDocument) throw new Error();
+
+    res.redirect(urlDocument.originalUrl);
+  } catch {
+    res.json({ error: 'Url not found' });
   }
 });
